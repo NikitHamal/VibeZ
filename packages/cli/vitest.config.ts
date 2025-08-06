@@ -6,6 +6,7 @@
 
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
   test: {
@@ -32,6 +33,11 @@ export default defineConfig({
         'cobertura',
         ['json-summary', { outputFile: 'coverage-summary.json' }],
       ],
+    },
+  },
+  resolve: {
+    alias: {
+      '@qwen-code/qwen-code-core': path.resolve(__dirname, '../core/src/index.ts'),
     },
   },
 });

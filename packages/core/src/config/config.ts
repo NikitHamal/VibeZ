@@ -132,6 +132,11 @@ export enum AuthProviderType {
   GOOGLE_CREDENTIALS = 'google_credentials',
 }
 
+export interface QwenConfig {
+  token: string;
+  cookie: string;
+}
+
 export interface SandboxConfig {
   command: 'docker' | 'podman' | 'sandbox-exec';
   image: string;
@@ -201,6 +206,7 @@ export interface ConfigParameters {
     timeout?: number;
     maxRetries?: number;
   };
+  qwen?: QwenConfig;
 }
 
 export class Config {
@@ -273,6 +279,7 @@ export class Config {
     timeout?: number;
     maxRetries?: number;
   };
+  private readonly qwen?: QwenConfig;
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
     this.embeddingModel =
@@ -337,6 +344,7 @@ export class Config {
     this.enableOpenAILogging = params.enableOpenAILogging ?? false;
     this.sampling_params = params.sampling_params;
     this.contentGenerator = params.contentGenerator;
+    this.qwen = params.qwen;
 
     if (params.contextFileName) {
       setGeminiMdFilename(params.contextFileName);
@@ -710,6 +718,17 @@ export class Config {
       }>
     | undefined {
     return this.systemPromptMappings;
+  }
+
+  getQwenHeaders(): Record<string, string> {
+    if (!this.qwen) {
+      throw new Error('Qwen config is not set');
+    }
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.qwen.token}`,
+      'Cookie': this.qwen.cookie,
+    };
   }
 
   async getGitService(): Promise<GitService> {

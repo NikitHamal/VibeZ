@@ -46,6 +46,7 @@ export enum AuthType {
   USE_VERTEX_AI = 'vertex-ai',
   CLOUD_SHELL = 'cloud-shell',
   USE_OPENAI = 'openai',
+  QWEN = 'qwen',
 }
 
 export type ContentGeneratorConfig = {
@@ -96,7 +97,8 @@ export function createContentGeneratorConfig(
   // If we are using Google auth or we are in Cloud Shell, there is nothing else to validate for now
   if (
     authType === AuthType.LOGIN_WITH_GOOGLE ||
-    authType === AuthType.CLOUD_SHELL
+    authType === AuthType.CLOUD_SHELL ||
+    authType === AuthType.QWEN
   ) {
     return contentGeneratorConfig;
   }
@@ -182,6 +184,11 @@ export async function createContentGenerator(
 
     // Always use OpenAIContentGenerator, logging is controlled by enableOpenAILogging flag
     return new OpenAIContentGenerator(config.apiKey, config.model, gcConfig);
+  }
+
+  if (config.authType === AuthType.QWEN) {
+    const { QwenChat } = await import('./qwenChat.js');
+    return new QwenChat(gcConfig);
   }
 
   throw new Error(

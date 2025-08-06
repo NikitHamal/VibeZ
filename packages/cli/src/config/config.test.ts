@@ -35,6 +35,8 @@ vi.mock('@qwen-code/qwen-code-core', async () => {
   );
   return {
     ...actualServer,
+    DEFAULT_GEMINI_EMBEDDING_MODEL: 'embedding-model',
+    DEFAULT_GEMINI_MODEL: 'qwen3-coder-plus',
     IdeClient: {
       getInstance: vi.fn().mockReturnValue({
         getConnectionStatus: vi.fn(),
