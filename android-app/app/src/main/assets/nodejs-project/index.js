@@ -3,10 +3,15 @@
 const path = require('path');
 const fs = require('fs');
 
+// Patch console to prefix messages for native listener parsing (optional)
+const origLog = console.log.bind(console);
+const origError = console.error.bind(console);
+console.log = (...args) => { origLog('[STDOUT]', ...args); };
+console.error = (...args) => { origError('[STDERR]', ...args); };
+
 function resolveBundle() {
   const p = path.join(__dirname, 'gemini.js');
   if (fs.existsSync(p)) return p;
-  // fallback in case different asset path
   return path.join(__dirname, '..', 'gemini.js');
 }
 
@@ -17,9 +22,13 @@ function main() {
     console.error('gemini.js bundle not found in assets');
     process.exit(1);
   }
-  // Emulate CLI bin behavior
   process.argv = ['node', 'qwen', ...argv];
-  require(bundle);
+  try {
+    require(bundle);
+  } catch (e) {
+    console.error('Fatal error in CLI:', e && e.stack ? e.stack : e);
+    process.exit(1);
+  }
 }
 
 main();

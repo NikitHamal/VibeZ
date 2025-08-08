@@ -6,6 +6,10 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "nodebridge", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "nodebridge", __VA_ARGS__)
 
+// If node headers are available (from Node Mobile), include them to call node::Start
+// #include <node.h>
+// #include <uv.h>
+
 extern "C" JNIEXPORT jint JNICALL
 Java_ai_qwen_code_NodeBridge_startNodeWithArgs(
     JNIEnv* env,
@@ -29,14 +33,34 @@ Java_ai_qwen_code_NodeBridge_startNodeWithArgs(
     env->DeleteLocalRef(s);
   }
 
-  // TODO: Integrate Node.js Mobile runtime here, e.g.:
-  // int code = node::Start(argc, argv); or node::Start(args_vector);
-  // Also wire a custom console that calls back to onStdout/onStderr.
+  int exit_code = 0;
 
-  jstring msg = env->NewStringUTF("Node Mobile start stub: replace with node::Start and console bridge.");
-  env->CallVoidMethod(listener, onStdout, msg);
-  env->DeleteLocalRef(msg);
+  // Option A (recommended): patch console.log in index.js to forward to a Java bridge.
+  // Option B (native): redirect stdout/stderr via libuv to call onStdout/onStderr.
 
-  env->CallVoidMethod(listener, onExit, 0);
-  return 0;
+  // Pseudo-implementation (compile guards):
+#if defined(HAVE_NODE_MOBILE)
+  // Build argv for node::Start
+  std::vector<char*> argv;
+  argv.reserve(args.size() + 1);
+  // First arg is a program name
+  argv.push_back(const_cast<char*>("node"));
+  for (auto &a : args) argv.push_back(const_cast<char*>(a.c_str()));
+
+  // TODO: setup uv pipe hooks to capture stdout/stderr and call back to Java
+  // This requires integrating with Node's libuv loop and setting custom write callbacks.
+
+  exit_code = node::Start(argv.size(), argv.data());
+#else
+  // Fallback if Node Mobile headers/libs not linked: notify and exit
+  {
+    jstring msg = env->NewStringUTF("Node Mobile not linked. Define HAVE_NODE_MOBILE and link node to run.");
+    env->CallVoidMethod(listener, onStderr, msg);
+    env->DeleteLocalRef(msg);
+  }
+  exit_code = -1;
+#endif
+
+  env->CallVoidMethod(listener, onExit, exit_code);
+  return exit_code;
 }

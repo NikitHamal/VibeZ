@@ -61,8 +61,12 @@ dependencies {
   implementation 'androidx.lifecycle:lifecycle-runtime:2.8.6'
   implementation 'androidx.activity:activity:1.9.3'
 
-  // Node.js Mobile (place the AAR under app/libs)
-  implementation files('libs/nodejs-mobile-android.aar')
+  // Node.js Mobile (place the AAR under app/libs). Include only if present.
+  if (file('libs/nodejs-mobile-android.aar').exists()) {
+    implementation files('libs/nodejs-mobile-android.aar')
+  } else {
+    logger.lifecycle('nodejs-mobile-android.aar not found in app/libs (skipping). Place it there to enable Node embedding.')
+  }
 
   testImplementation 'junit:junit:4.13.2'
   androidTestImplementation 'androidx.test.ext:junit:1.2.1'
