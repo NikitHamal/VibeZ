@@ -23,7 +23,10 @@ export const validateAuthMethod = (authMethod: string): string | null => {
     return null;
   }
 
-  if (authMethod === AuthType.USE_VERTEX_AI) {
+  if (
+    authMethod === AuthType.USE_VERTEX_AI &&
+    (process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_API_KEY)
+  ) {
     const hasVertexProjectLocationConfig =
       !!process.env.GOOGLE_CLOUD_PROJECT && !!process.env.GOOGLE_CLOUD_LOCATION;
     const hasGoogleApiKey = !!process.env.GOOGLE_API_KEY;
@@ -42,6 +45,11 @@ export const validateAuthMethod = (authMethod: string): string | null => {
     if (!process.env.OPENAI_API_KEY) {
       return 'OPENAI_API_KEY environment variable not found. You can enter it interactively or add it to your .env file.';
     }
+    return null;
+  }
+
+  if (authMethod === AuthType.USE_QWEN_WEB) {
+    // Hardcoded reverse-engineered flow requires no runtime secret input
     return null;
   }
 
