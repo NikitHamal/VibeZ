@@ -17,12 +17,17 @@ public class NodeBridge {
     if (started.getAndSet(true)) return;
     new Thread(() -> {
       try {
-        System.loadLibrary("nodejs-mobile-react-native"); // placeholder name; replace with actual
+        System.loadLibrary("nodejs-mobile");
       } catch (Throwable t) {
-        Log.e("NodeBridge", "Failed loading node lib", t);
+        Log.e("NodeBridge", "Failed loading nodejs-mobile lib", t);
       }
       try {
-        int code = startNodeWithArgs(args, listener);
+        // Compose arguments to run our index.js bootstrap
+        String[] full = new String[2 + args.length];
+        full[0] = "node";
+        full[1] = context.getFilesDir().getAbsolutePath(); // placeholder, not used by node mobile
+        System.arraycopy(args, 0, full, 2, args.length);
+        int code = startNodeWithArgs(full, listener);
         listener.onExit(code);
       } catch (Throwable t) {
         listener.onStderr("Node crashed: " + t.getMessage());
