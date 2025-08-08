@@ -21,7 +21,7 @@ function getAuthTypeFromEnv(): AuthType | undefined {
   if (process.env.OPENAI_API_KEY) {
     return AuthType.USE_OPENAI;
   }
-  return undefined;
+  return AuthType.QWEN_WEB;
 }
 
 export async function validateNonInteractiveAuth(
