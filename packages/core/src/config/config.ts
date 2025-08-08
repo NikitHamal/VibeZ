@@ -369,30 +369,38 @@ export class Config {
     // Save the current conversation history before creating a new client
     let existingHistory: Content[] = [];
     if (this.geminiClient && this.geminiClient.isInitialized()) {
-      existingHistory = this.geminiClient.getHistory();
+      try {
+        existingHistory = this.geminiClient.getHistory();
+      } catch {
+        existingHistory = [];
+      }
     }
 
-    // Create new content generator config
-    const newContentGeneratorConfig = createContentGeneratorConfig(
-      this,
-      authMethod,
-    );
+    // Reset fallback mode on auth refresh
+    this.inFallbackMode = false;
 
-    // Create and initialize new client in local variable first
-    const newGeminiClient = new GeminiClient(this);
-    await newGeminiClient.initialize(newContentGeneratorConfig);
+    // Build content generator config for the new auth method
+    this.contentGeneratorConfig = createContentGeneratorConfig(this, authMethod);
 
-    // Only assign to instance properties after successful initialization
-    this.contentGeneratorConfig = newContentGeneratorConfig;
-    this.geminiClient = newGeminiClient;
+    // Persist sampling params and other overrides if provided
+    if (this.sampling_params) {
+      this.contentGeneratorConfig.samplingParams = {
+        ...(this.contentGeneratorConfig.samplingParams || {}),
+        ...this.sampling_params,
+      } as ContentGeneratorConfig['samplingParams'];
+    }
 
-    // Restore the conversation history to the new client
+    // Always use our current selected model
+    this.contentGeneratorConfig.model = this.model;
+
+    // Recreate client and initialize
+    this.geminiClient = new GeminiClient(this);
+    await this.geminiClient.initialize(this.contentGeneratorConfig);
+
+    // Restore existing history
     if (existingHistory.length > 0) {
       this.geminiClient.setHistory(existingHistory);
     }
-
-    // Reset the session flag since we're explicitly changing auth and using default model
-    this.inFallbackMode = false;
   }
 
   getSessionId(): string {

@@ -45,7 +45,10 @@ export function AuthDialog({
     initialErrorMessage || null,
   );
   const [showOpenAIKeyPrompt, setShowOpenAIKeyPrompt] = useState(false);
-  const items = [{ label: 'OpenAI', value: AuthType.USE_OPENAI }];
+  const items = [
+    { label: 'Qwen Web (Built-in)', value: AuthType.USE_QWEN_WEB },
+    { label: 'OpenAI', value: AuthType.USE_OPENAI },
+  ];
 
   const initialAuthIndex = Math.max(
     0,
@@ -65,7 +68,7 @@ export function AuthDialog({
         return item.value === AuthType.USE_GEMINI;
       }
 
-      return item.value === AuthType.LOGIN_WITH_GOOGLE;
+      return item.value === AuthType.USE_QWEN_WEB;
     }),
   );
 

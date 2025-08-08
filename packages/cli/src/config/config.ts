@@ -23,6 +23,7 @@ import {
   TelemetryTarget,
   FileFilteringOptions,
   IdeClient,
+  AuthType,
 } from '@qwen-code/qwen-code-core';
 import { Settings } from './settings.js';
 
@@ -81,7 +82,7 @@ export async function parseArguments(): Promise<CliArgs> {
       alias: 'm',
       type: 'string',
       description: `Model`,
-      default: process.env.GEMINI_MODEL,
+      default: process.env.GEMINI_MODEL || 'qwen3-coder-plus',
     })
     .option('prompt', {
       alias: 'p',
@@ -318,6 +319,14 @@ export async function loadCliConfig(
   const activeExtensions = extensions.filter(
     (_, i) => allExtensions[i].isActive,
   );
+
+  // Map to GeminiCLIExtension shape for core config
+  const coreExtensions = activeExtensions.map((ext) => ({
+    name: ext.config.name,
+    version: ext.config.version,
+    isActive: true,
+    path: ext.path,
+  }));
   // Handle OpenAI API key from command line
   if (argv.openaiApiKey) {
     process.env.OPENAI_API_KEY = argv.openaiApiKey;
@@ -413,16 +422,15 @@ export async function loadCliConfig(
 
   const sandboxConfig = await loadSandboxConfig(settings, argv);
 
-  return new Config({
+  const config = new Config({
     sessionId,
     embeddingModel: DEFAULT_GEMINI_EMBEDDING_MODEL,
     sandbox: sandboxConfig,
     targetDir: process.cwd(),
-    includeDirectories: argv.includeDirectories,
     debugMode,
-    question: argv.promptInteractive || argv.prompt || '',
+    question: argv.prompt ?? argv.promptInteractive ?? undefined,
     fullContext: argv.allFiles || argv.all_files || false,
-    coreTools: settings.coreTools || undefined,
+    coreTools: settings.coreTools,
     excludeTools,
     toolDiscoveryCommand: settings.toolDiscoveryCommand,
     toolCallCommand: settings.toolCallCommand,
@@ -430,74 +438,42 @@ export async function loadCliConfig(
     mcpServers,
     userMemory: memoryContent,
     geminiMdFileCount: fileCount,
-    approvalMode: argv.yolo || false ? ApprovalMode.YOLO : ApprovalMode.DEFAULT,
-    showMemoryUsage:
-      argv.showMemoryUsage ||
-      argv.show_memory_usage ||
-      settings.showMemoryUsage ||
-      false,
-    accessibility: settings.accessibility,
-    telemetry: {
-      enabled: argv.telemetry ?? settings.telemetry?.enabled,
-      target: (argv.telemetryTarget ??
-        settings.telemetry?.target) as TelemetryTarget,
-      otlpEndpoint:
-        argv.telemetryOtlpEndpoint ??
-        process.env.OTEL_EXPORTER_OTLP_ENDPOINT ??
-        settings.telemetry?.otlpEndpoint,
-      logPrompts: argv.telemetryLogPrompts ?? settings.telemetry?.logPrompts,
-      outfile: argv.telemetryOutfile ?? settings.telemetry?.outfile,
-    },
-    usageStatisticsEnabled: settings.usageStatisticsEnabled ?? true,
-    // Git-aware file filtering settings
-    fileFiltering: {
-      respectGitIgnore: settings.fileFiltering?.respectGitIgnore,
-      respectGeminiIgnore: settings.fileFiltering?.respectGeminiIgnore,
-      enableRecursiveFileSearch:
-        settings.fileFiltering?.enableRecursiveFileSearch,
-    },
-    checkpointing: argv.checkpointing || settings.checkpointing?.enabled,
-    proxy:
-      argv.proxy ||
-      process.env.HTTPS_PROXY ||
-      process.env.https_proxy ||
-      process.env.HTTP_PROXY ||
-      process.env.http_proxy,
+    approvalMode: argv.yolo ? ApprovalMode.YOLO : ApprovalMode.DEFAULT,
+    showMemoryUsage: !!settings.showMemoryUsage,
+    accessibility: settings.accessibility ?? {},
+    telemetry: settings.telemetry ?? {},
+    usageStatisticsEnabled: settings.usageStatisticsEnabled ?? false,
+    fileFiltering,
+    checkpointing: !!argv.checkpointing || !!settings.checkpointing?.enabled,
+    proxy: argv.proxy,
     cwd: process.cwd(),
     fileDiscoveryService: fileService,
     bugCommand: settings.bugCommand,
     model: argv.model || settings.model || DEFAULT_GEMINI_MODEL,
     extensionContextFilePaths,
     maxSessionTurns: settings.maxSessionTurns ?? -1,
-    sessionTokenLimit: settings.sessionTokenLimit ?? 32000,
-    maxFolderItems: settings.maxFolderItems ?? 20,
-    experimentalAcp: argv.experimentalAcp || false,
-    listExtensions: argv.listExtensions || false,
-    extensions: allExtensions,
+    sessionTokenLimit: settings.sessionTokenLimit ?? -1,
+    maxFolderItems: settings.maxFolderItems ?? 2000,
+    experimentalAcp: !!argv.experimentalAcp,
+    listExtensions: !!argv.listExtensions,
+    extensions: coreExtensions,
     blockedMcpServers,
-    noBrowser: !!process.env.NO_BROWSER,
+    noBrowser: !!settings.hideWindowTitle,
     summarizeToolOutput: settings.summarizeToolOutput,
-    ideMode,
     ideModeFeature,
+    ideMode,
     ideClient,
-    enableOpenAILogging:
-      (typeof argv.openaiLogging === 'undefined'
-        ? settings.enableOpenAILogging
-        : argv.openaiLogging) ?? false,
+    enableOpenAILogging: !!argv.openaiLogging || !!settings.enableOpenAILogging,
     sampling_params: settings.sampling_params,
-    systemPromptMappings: settings.systemPromptMappings ?? [
-      {
-        baseUrls: [
-          'https://dashscope.aliyuncs.com/compatible-mode/v1/',
-          'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/',
-        ],
-        modelNames: ['qwen3-coder-plus'],
-        template:
-          'SYSTEM_TEMPLATE:{"name":"qwen3_coder","params":{"is_git_repository":{RUNTIME_VARS_IS_GIT_REPO},"sandbox":"{RUNTIME_VARS_SANDBOX}"}}',
-      },
-    ],
+    systemPromptMappings: settings.systemPromptMappings,
     contentGenerator: settings.contentGenerator,
   });
+
+  // Initialize auth; prefer user setting, else fall back to qwen-web
+  const selectedAuth = settings.selectedAuthType ?? (AuthType.USE_QWEN_WEB as unknown as any);
+  await config.refreshAuth(selectedAuth as unknown as any);
+
+  return config;
 }
 
 function mergeMcpServers(settings: Settings, extensions: Extension[]) {

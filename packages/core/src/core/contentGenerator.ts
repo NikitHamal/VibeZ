@@ -46,6 +46,7 @@ export enum AuthType {
   USE_VERTEX_AI = 'vertex-ai',
   CLOUD_SHELL = 'cloud-shell',
   USE_OPENAI = 'openai',
+  USE_QWEN_WEB = 'qwen-web',
 }
 
 export type ContentGeneratorConfig = {
@@ -182,6 +183,11 @@ export async function createContentGenerator(
 
     // Always use OpenAIContentGenerator, logging is controlled by enableOpenAILogging flag
     return new OpenAIContentGenerator(config.apiKey, config.model, gcConfig);
+  }
+
+  if (config.authType === AuthType.USE_QWEN_WEB) {
+    const { QwenWebContentGenerator } = await import('./qwenWebContentGenerator.js');
+    return new QwenWebContentGenerator(gcConfig, config.model, sessionId);
   }
 
   throw new Error(
