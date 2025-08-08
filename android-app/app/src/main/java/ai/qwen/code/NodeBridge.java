@@ -2,6 +2,7 @@ package ai.qwen.code;
 
 import android.content.Context;
 import android.util.Log;
+import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NodeBridge {
@@ -13,7 +14,7 @@ public class NodeBridge {
 
   private static final AtomicBoolean started = new AtomicBoolean(false);
 
-  public static void startNode(Context context, String[] args, Listener listener) {
+  public static void startNode(Context context, String[] cliArgs, Listener listener) {
     if (started.getAndSet(true)) return;
     new Thread(() -> {
       try {
@@ -22,11 +23,16 @@ public class NodeBridge {
         Log.e("NodeBridge", "Failed loading nodejs-mobile lib", t);
       }
       try {
-        // Compose arguments to run our index.js bootstrap
-        String[] full = new String[2 + args.length];
-        full[0] = "node";
-        full[1] = context.getFilesDir().getAbsolutePath(); // placeholder, not used by node mobile
-        System.arraycopy(args, 0, full, 2, args.length);
+        // Copy nodejs project assets to internal storage for Node to access
+        File projDir = AssetUtils.copyAssetsDir(context, "nodejs-project", "nodejs-project");
+        File indexJs = new File(projDir, "index.js");
+
+        // Compose arguments: node index.js -- <cliArgs>
+        String[] full = new String[2 + cliArgs.length];
+        full[0] = indexJs.getAbsolutePath();
+        full[1] = "--";
+        System.arraycopy(cliArgs, 0, full, 2, cliArgs.length);
+
         int code = startNodeWithArgs(full, listener);
         listener.onExit(code);
       } catch (Throwable t) {
