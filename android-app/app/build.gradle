@@ -25,6 +25,13 @@ android {
     sourceCompatibility JavaVersion.VERSION_17
     targetCompatibility JavaVersion.VERSION_17
   }
+
+  sourceSets {
+    main {
+      assets.srcDirs = ['src/main/assets']
+      jniLibs.srcDirs = ['src/main/jniLibs']
+    }
+  }
 }
 
 dependencies {
@@ -35,6 +42,9 @@ dependencies {
   implementation 'androidx.cardview:cardview:1.0.0'
   implementation 'androidx.lifecycle:lifecycle-runtime:2.8.6'
   implementation 'androidx.activity:activity:1.9.3'
+
+  // Node.js Mobile (place the AAR under app/libs)
+  implementation files('libs/nodejs-mobile-android.aar')
 
   testImplementation 'junit:junit:4.13.2'
   androidTestImplementation 'androidx.test.ext:junit:1.2.1'
